@@ -1,5 +1,9 @@
 # LiteLLM gateway
 
+New installation: follow [AI setup in Russian](../docs/AI_RU.md) for cloud,
+Ollama or your own compatible gateway. The OmniRoute addresses and model IDs
+below describe the original installation, not services bundled with this repo.
+
 Application code addresses only these stable aliases: `free-fast`, `free-default`,
 `free-reasoning`, `free-coder`, `free-long-context`, `hermes-agent`, and
 `local` (the reserve).

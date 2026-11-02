@@ -1,5 +1,10 @@
 # Threads Recruitment Manager
 
+For current step-by-step setup, provider connection checks and agent-assisted
+installation, see [the Russian setup index](docs/SETUP_RU.md) and
+[the agent handoff prompt](docs/AGENT_PROMPT_RU.md). The technical details below
+also include configuration history; use the setup guides for a new machine.
+
 
 Threads Recruitment Manager is a Docker-first recruitment and Meta Threads
 operations dashboard. It keeps vacancies, content, approval, scheduling,
