@@ -1,0 +1,395 @@
+name: ${COMPOSE_PROJECT_NAME:-threads-recruitment-manager}
+
+x-app-environment: &app-environment
+  APP_ENV: ${APP_ENV:-development}
+  APP_HOST: 0.0.0.0
+  APP_PORT: 8000
+  APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Warsaw}
+  TIMEZONE: ${APP_TIMEZONE:-Europe/Warsaw}
+  DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-uk}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  LITELLM_BASE_URL: http://litellm:4000
+  LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+  LITELLM_API_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+  HERMES_BASE_URL: http://hermes:8642
+  HERMES_API_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
+  # Hermes is an orchestration runtime in front of the same local model. With
+  # a small model that layer times out instead of answering, so the strategist
+  # uses the plain LiteLLM route by default.
+  HERMES_FOR_STRATEGIST: ${HERMES_FOR_STRATEGIST:-false}
+  HERMES_ENABLED: ${HERMES_ENABLED:-false}
+  THREADS_MOCK_MODE: ${THREADS_MOCK_MODE:-true}
+  AI_MOCK_MODE: ${AI_MOCK_MODE:-true}
+  AUTO_POST: ${AUTO_POST:-false}
+  AUTO_REPLY: ${AUTO_REPLY:-false}
+  AUTO_EXTERNAL_COMMENT: ${AUTO_EXTERNAL_COMMENT:-false}
+  # Limits default to app/config.py values. Operator overrides in .env win,
+  # and the worker always applies min(settings, AppSetting) as the gate.
+  MAX_POSTS_PER_HOUR: ${MAX_POSTS_PER_HOUR:-4}
+  MAX_REPLIES_PER_HOUR: ${MAX_REPLIES_PER_HOUR:-12}
+  THREADS_APP_ID: ${THREADS_APP_ID:-}
+  THREADS_APP_SECRET: ${THREADS_APP_SECRET:-}
+  THREADS_REDIRECT_URI: ${THREADS_REDIRECT_URI:-http://localhost:8000/api/threads/oauth/callback}
+  THREADS_ACCESS_TOKEN: ${THREADS_ACCESS_TOKEN:-}
+  THREADS_API_BASE_URL: ${THREADS_API_BASE_URL:-https://graph.threads.net}
+  THREADS_WEBHOOK_VERIFY_TOKEN: ${THREADS_WEBHOOK_VERIFY_TOKEN:-}
+  THREADS_TOKEN_KEY: ${THREADS_TOKEN_KEY:-}
+  OPERATOR_TOKEN: ${OPERATOR_TOKEN:-}
+  INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID:-}
+  INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET:-}
+  INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-http://localhost:8000/api/social/oauth/instagram/callback}
+  INSTAGRAM_API_BASE_URL: ${INSTAGRAM_API_BASE_URL:-https://graph.instagram.com}
+  INSTAGRAM_API_VERSION: ${INSTAGRAM_API_VERSION:-v25.0}
+  TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-}
+  TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+  TIKTOK_REDIRECT_URI: ${TIKTOK_REDIRECT_URI:-http://localhost:8000/api/social/oauth/tiktok/callback}
+  TIKTOK_API_BASE_URL: ${TIKTOK_API_BASE_URL:-https://open.tiktokapis.com}
+  SOCIAL_TOKEN_KEY: ${SOCIAL_TOKEN_KEY:-}
+  SOCIAL_LOCAL_ONLY: ${SOCIAL_LOCAL_ONLY:-true}
+  ALLOW_MANUAL_TOKEN_IMPORT: ${ALLOW_MANUAL_TOKEN_IMPORT:-false}
+  COMFYUI_BASE_URL: ${COMFYUI_BASE_URL:-http://host.docker.internal:8188}
+  COMFYUI_MOCK_MODE: ${COMFYUI_MOCK_MODE:-true}
+  LOCAL_VIDEO_FALLBACK: ${LOCAL_VIDEO_FALLBACK:-true}
+  LOCAL_VIDEO_DURATION_SECONDS: ${LOCAL_VIDEO_DURATION_SECONDS:-5}
+  COMFYUI_WORKFLOW_DIR: ${COMFYUI_WORKFLOW_DIR:-/app/workflows}
+  COMFYUI_IMAGE_WORKFLOW: ${COMFYUI_IMAGE_WORKFLOW:-}
+  COMFYUI_VIDEO_WORKFLOW: ${COMFYUI_VIDEO_WORKFLOW:-}
+  COMFYUI_TIMEOUT_SECONDS: ${COMFYUI_TIMEOUT_SECONDS:-1800}
+  MEDIA_OUTPUT_DIR: ${MEDIA_OUTPUT_DIR:-/app/data/media}
+  MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-}
+  MEDIA_MAX_BYTES: ${MEDIA_MAX_BYTES:-100000000}
+  MEDIA_DISK_QUOTA_BYTES: ${MEDIA_DISK_QUOTA_BYTES:-2000000000}
+  IMAGE_CHECKPOINT: ${IMAGE_CHECKPOINT:-}
+  WAN_TEXT_ENCODER: ${WAN_TEXT_ENCODER:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_CHANNEL: ${TELEGRAM_CHANNEL:-}
+  TELEGRAM_POLL_INTERVAL_SECONDS: ${TELEGRAM_POLL_INTERVAL_SECONDS:-60}
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_MOCK_MODE: ${VITE_MOCK_MODE:-false}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - media_data:/app/data/media
+      - ./workflows:/app/workflows:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app_net
+      - data_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    environment: *app-environment
+    command: ["python", "-m", "worker.main"]
+    volumes:
+      - media_data:/app/data/media
+      - ./workflows:/app/workflows:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+      # Migrations are applied by the backend on start; claiming jobs before
+      # they exist fails every claim with a missing-column error (audit D12).
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "worker.health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app_net
+      - data_net
+
+  worker-agents:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      WORKER_ROLE: agents
+      WORKER_JOB_KINDS: run_agent,content_plan,prepare_content
+    command: ["python", "-m", "worker.main"]
+    volumes:
+      - media_data:/app/data/media
+      - ./workflows:/app/workflows:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "worker.health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app_net
+      - data_net
+
+  mysql:
+    image: mysql:8.4.3
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-threads_recruitment}
+      MYSQL_USER: ${MYSQL_USER:-threads_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --silent -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - data_net
+
+  redis:
+    image: redis:7.4.1-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data_net
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.103.0
+    restart: unless-stopped
+    command:
+      - --config
+      - ${LITELLM_CONFIG_FILE:-/app/config.mock.yaml}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "4000"
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+      # The LiteLLM gateway routes every alias through the local OmniRoute
+      # instance (OpenAI-compatible /v1). The local Ollama model stays the
+      # reserve of every alias: `local` is the last link of each fallback.
+      OMNIROUTE_BASE_URL: ${OMNIROUTE_BASE_URL:-http://host.docker.internal:20128/v1}
+      OMNIROUTE_API_KEY: ${OMNIROUTE_API_KEY:-}
+      OMNIROUTE_MODEL_FAST: ${OMNIROUTE_MODEL_FAST:-openai/antigravity/gemini-3.1-flash-lite}
+      OMNIROUTE_MODEL_DEFAULT: ${OMNIROUTE_MODEL_DEFAULT:-openai/antigravity/gemini-3-flash}
+      OMNIROUTE_MODEL_REASONING: ${OMNIROUTE_MODEL_REASONING:-openai/antigravity/gemini-3.8-flash-high}
+      # The local reserve. Keep the verified non-thinking Ollama tag.
+      LITELLM_LOCAL_MODEL: ${LITELLM_LOCAL_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_LOCAL_API_BASE: ${LITELLM_LOCAL_API_BASE:-http://host.docker.internal:11434}
+      # Local-only defaults: every alias maps to the verified non-thinking
+      # Ollama tag reachable through host.docker.internal. A cloud provider is
+      # a change of the model id, the api base and the api key for that alias.
+      LITELLM_FREE_FAST_MODEL: ${LITELLM_FREE_FAST_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_FREE_FAST_API_BASE: ${LITELLM_FREE_FAST_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_FREE_DEFAULT_MODEL: ${LITELLM_FREE_DEFAULT_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_FREE_DEFAULT_API_BASE: ${LITELLM_FREE_DEFAULT_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_FREE_REASONING_MODEL: ${LITELLM_FREE_REASONING_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_FREE_REASONING_API_BASE: ${LITELLM_FREE_REASONING_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_FREE_CODER_MODEL: ${LITELLM_FREE_CODER_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_FREE_CODER_API_BASE: ${LITELLM_FREE_CODER_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_FREE_LONG_CONTEXT_MODEL: ${LITELLM_FREE_LONG_CONTEXT_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_FREE_LONG_CONTEXT_API_BASE: ${LITELLM_FREE_LONG_CONTEXT_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_HERMES_MODEL: ${LITELLM_HERMES_MODEL:-ollama_chat/qwen3:4b-instruct}
+      LITELLM_HERMES_API_BASE: ${LITELLM_HERMES_API_BASE:-http://host.docker.internal:11434}
+      LITELLM_PROVIDER_API_KEY: ${LITELLM_PROVIDER_API_KEY:-ollama}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "127.0.0.1:${LITELLM_PORT:-4000}:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/config.mock.yaml:/app/config.mock.yaml:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    networks:
+      - app_net
+
+  hermes-init:
+    image: alpine:3.20.3
+    restart: "no"
+    # Hermes is optional. Its own prompt is about 13K tokens, which a small
+    # local model cannot prefill inside a usable time, and a retrying Hermes
+    # steals the model from the content pipeline. Enable the profile only
+    # with a fast model or a cloud provider.
+    profiles: ["hermes"]
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if [ ! -f /opt/data/config.yaml ]; then
+          cp /seed/config.yaml /opt/data/config.yaml
+          chmod 600 /opt/data/config.yaml
+        fi
+    volumes:
+      - hermes_data:/opt/data
+      - ./hermes/config.yaml:/seed/config.yaml:ro
+    networks:
+      - app_net
+
+  hermes:
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.9.24}
+    restart: unless-stopped
+    profiles: ["hermes"]
+    command: ["gateway", "run"]
+    environment:
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_PORT: 8642
+      API_SERVER_KEY: ${HERMES_API_KEY:?Set HERMES_API_KEY in .env}
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY in .env}
+    ports:
+      - "127.0.0.1:${HERMES_HOST_PORT:-8642}:8642"
+    volumes:
+      - hermes_data:/opt/data
+    depends_on:
+      hermes-init:
+        condition: service_completed_successfully
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3)"
+      interval: 20s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    shm_size: 1gb
+    networks:
+      - app_net
+
+  adminer:
+    image: adminer:4.8.1-standalone
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/') === false);"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - data_net
+
+  backend-test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: test
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////tmp/threads-test.db
+      REDIS_URL: redis://redis:6379/15
+      THREADS_MOCK_MODE: "true"
+      AI_MOCK_MODE: "true"
+    command: ["pytest", "tests/backend", "-q"]
+    networks:
+      - data_net
+
+  frontend-test:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: build
+    command: ["npm", "test"]
+
+volumes:
+  mysql_data:
+  redis_data:
+  hermes_data:
+  media_data:
+
+networks:
+  app_net:
+  data_net:
+    internal: true

@@ -1,0 +1,17 @@
+# Seeded once into the hermes_data volume by the hermes-init service.
+# Hermes remains an external orchestration runtime; recruitment business rules
+# and write authorization stay in the backend.
+model:
+  provider: custom
+  default: hermes-agent
+  base_url: http://litellm:4000/v1
+  key_env: OPENAI_API_KEY
+  api_mode: chat_completions
+
+agent:
+  reasoning_effort: low
+
+# Deliberately do not provision terminal, browser, or filesystem tools here.
+# Tool access for recruitment workflows is exposed through an explicit backend
+# allowlist rather than broad host/container access.
+

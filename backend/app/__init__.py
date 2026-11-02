@@ -1,0 +1,2 @@
+"""Threads Recruitment Manager backend."""
+

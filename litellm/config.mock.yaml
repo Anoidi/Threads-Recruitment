@@ -1,0 +1,25 @@
+# Deterministic, credential-free default. These routes never call an external model.
+model_list:
+  - model_name: free-fast
+    litellm_params: &mock_model
+      model: openai/mock-development-model
+      api_key: mock-key
+      mock_response: '{"mode":"mock","message":"Mock AI response. Configure a real provider before relying on generated content."}'
+  - model_name: free-default
+    litellm_params: *mock_model
+  - model_name: free-reasoning
+    litellm_params: *mock_model
+  - model_name: free-coder
+    litellm_params: *mock_model
+  - model_name: free-long-context
+    litellm_params: *mock_model
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: true
+
+litellm_settings:
+  telemetry: false
+  json_logs: true
+  drop_params: true
+

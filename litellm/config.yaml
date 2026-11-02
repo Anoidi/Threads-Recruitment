@@ -1,0 +1,98 @@
+# Model routes.
+#
+# The primary provider is the local OmniRoute gateway, which exposes an
+# OpenAI-compatible /v1 API and already routes across a dozen upstream
+# providers. The local Ollama model stays available under the `local` alias
+# and is the last link of every fallback chain: when the gateway or its
+# upstream credentials run out, the content pipeline keeps working on the
+# machine's own model.
+#
+# Model choice is deliberate, not automatic:
+#   - the `auto/*` aliases of OmniRoute are not used here. They pick a model
+#     per request, and the answer language follows the model: the same
+#     Ukrainian prompt produced a Polish answer and an English answer from
+#     two different `auto/*` routes, and the publish gate would have rejected
+#     both.
+#   - the reasoning levels ("low", "medium", "high") spend the output budget
+#     on reasoning tokens: `gemini-3.8-flash-low` used 565 of 696 tokens for
+#     reasoning and returned no text at all.
+#   - the Claude variants answered with an empty body and
+#     `finish_reason=length`.
+#
+# Measured on a Ukrainian recruitment prompt: gemini-3.1-flash-lite 1.6 s,
+# gemini-3-flash 1.7 s, gemini-3.8-flash-high 2.8 s - all with valid
+# Ukrainian and no reasoning tokens. The same prompt on the local 4B model
+# needed 90-130 s.
+model_list:
+  - model_name: free-fast
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_FAST
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 45
+  - model_name: free-default
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_DEFAULT
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 45
+  - model_name: free-reasoning
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_REASONING
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 60
+  - model_name: local
+    litellm_params:
+      model: os.environ/LITELLM_LOCAL_MODEL
+      api_base: os.environ/LITELLM_LOCAL_API_BASE
+      api_key: os.environ/LITELLM_PROVIDER_API_KEY
+      num_ctx: 8192
+      max_tokens: 900
+      temperature: 0.4
+      timeout: 180
+  - model_name: free-coder
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_FAST
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 45
+  - model_name: free-long-context
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_REASONING
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 90
+  - model_name: hermes-agent
+    litellm_params:
+      model: os.environ/OMNIROUTE_MODEL_REASONING
+      api_base: os.environ/OMNIROUTE_BASE_URL
+      api_key: os.environ/OMNIROUTE_API_KEY
+      timeout: 90
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: true
+
+litellm_settings:
+  telemetry: false
+  json_logs: true
+  # Provider params such as response_format are dropped instead of failing the
+  # request when the adapter does not accept them.
+  drop_params: true
+  # Must exceed the sum of the route timeouts: the fallback chain runs inside
+  # a single request.
+  request_timeout: 260
+  num_retries: 0
+
+router_settings:
+  routing_strategy: simple-shuffle
+  allowed_fails: 1
+  cooldown_time: 60
+  # The local model is the reserve of every alias.
+  fallbacks:
+    - free-fast: [free-default, local]
+    - free-default: [free-reasoning, local]
+    - free-reasoning: [free-default, local]
+    - free-coder: [free-default, local]
+    - free-long-context: [free-reasoning, local]
+    - hermes-agent: [free-reasoning, free-default, local]

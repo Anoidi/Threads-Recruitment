@@ -1,0 +1,6 @@
+# Threads Recruitment Manager
+
+Private local administration application. Automated access and indexing are not permitted.
+
+- [Application dashboard](/)
+- [Service health](/api/health)

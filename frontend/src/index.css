@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { font-family: Inter, "Segoe UI", sans-serif; color: #1a1e1b; background: #f5f6f3; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input, textarea, select { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid #398158; outline-offset: 2px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #cbd2cd; border-radius: 8px; }
+
+@layer components {
+  .panel { @apply rounded-xl border border-slate-200/90 bg-white shadow-panel; }
+  .button { @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-transparent px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .button-primary { @apply button bg-moss-600 text-white hover:bg-moss-700; }
+  .button-secondary { @apply button border-slate-200 bg-white text-slate-700 hover:bg-slate-50; }
+  .button-danger { @apply button border-red-200 bg-red-50 text-red-700 hover:bg-red-100; }
+  .input { @apply min-h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-moss-500 focus:outline-none focus:ring-2 focus:ring-moss-100; }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .table-row { @apply border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70; }
+}

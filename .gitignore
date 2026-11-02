@@ -1,0 +1,66 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.testdeps/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / frontend
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Runtime output
+logs/
+*.log
+backups/
+*.sql
+*.sql.gz
+*.dump
+tmp/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local tooling
+.cache/
+.freebuff/
+.arena/
+.agents/
+.envrc
+
+# Local build artefacts and captures. The portable build is a copy of this
+# repository and must never be committed, and setup screenshots can expose
+# internal account details.
+portable_*/
+*.zip
+*.png
+backups/*.zip
+
