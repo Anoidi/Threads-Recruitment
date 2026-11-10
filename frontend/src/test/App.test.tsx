@@ -17,6 +17,21 @@ beforeEach(() => resetMockData());
 afterEach(() => vi.restoreAllMocks());
 
 describe("critical recruitment flows", () => {
+  it("shows the next performance test and missing measurement coverage", async () => {
+    const data = await mockApi.analytics();
+    vi.spyOn(mockApi, "analytics").mockResolvedValue({ ...data, growth_learning: {
+      measurement_window: "24–30ч", window_days: 30,
+      coverage: { published: 12, comparable: 6, pending: 1, missing_window: 4, unavailable: 1, zero_views: 0 },
+      recommendation: "Проверить другую подачу на той же теме.", limitations: [], groups: [],
+      next_tests: [{ language: "uk", dimension: "format", status: "explore", preferred: "FAQ", comparison: "QUESTION", reason: "Разведка, выборка пока мала." }],
+    } });
+    renderAt("/analytics");
+    expect(await screen.findByText("Что проверит следующий контент-план")).toBeInTheDocument();
+    expect(screen.getByText("Проверить другую подачу на той же теме.")).toBeInTheDocument();
+    expect(screen.getByText(/пропущено окно 4/)).toBeInTheDocument();
+    expect(screen.getByText(/Разведка, выборка пока мала/)).toBeInTheDocument();
+  });
+
   it("shows the comparable sample and uncertainty behind analytics advice", async () => {
     const data = await mockApi.analytics();
     vi.spyOn(mockApi, "analytics").mockResolvedValue({ ...data, editorial_analysis: {

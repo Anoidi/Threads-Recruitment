@@ -120,6 +120,7 @@ export const mapAnalytics = (a: any): Analytics => ({
   coverage: a.coverage ?? { published_posts: 0, posts_with_metrics: 0, posts_metrics_unavailable: 0, public_threads: "no_recent_data", public_topics: 0 },
   trends: a.trends ?? [],
   editorial_analysis: a.editorial_analysis,
+  growth_learning: a.growth_learning,
 });const postPayload = (p: Partial<PostInput | Post>) => ({ ...p, vacancy_id: p.related_vacancy_id ? Number(p.related_vacancy_id) : null, related_vacancy_id: undefined, version: undefined });
 const mapCommunity = (i: BackendInteraction): CommunityItem => ({
   id: String(i.id), kind: i.kind, author: i.username, message: i.message, related_post: asString(i.post_id),

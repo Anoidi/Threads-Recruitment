@@ -66,6 +66,19 @@ export function AnalyticsPage() {
       </div>)}
     </section>
 
+    {data.growth_learning && <section className="panel mt-5 p-5">
+      <div className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-amber-600" aria-hidden /><h2 className="font-bold">Что проверит следующий контент-план</h2></div>
+      <p className="mt-2 text-sm text-slate-700">{data.growth_learning.recommendation}</p>
+      <p className="mt-2 text-xs text-slate-500">За {data.growth_learning.window_days} дней: публикаций {data.growth_learning.coverage.published} · сопоставимых {data.growth_learning.coverage.comparable} · ждут замера {data.growth_learning.coverage.pending} · пропущено окно {data.growth_learning.coverage.missing_window} · insights недоступны {data.growth_learning.coverage.unavailable} · нулевой охват {data.growth_learning.coverage.zero_views}. Сравниваем замеры {data.growth_learning.measurement_window} после публикации.</p>
+      <div className="mt-3 space-y-2">{data.growth_learning.next_tests.map(test => <p key={`${test.language}-${test.dimension}`} className="rounded-lg bg-amber-50 p-3 text-sm text-slate-700"><strong>{test.language.toUpperCase()} · {test.dimension === "format" ? "Формат" : "Начало поста"}:</strong> {test.reason}</p>)}</div>
+      {data.growth_learning.groups.length > 0 && <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm">
+        <caption className="mb-2 text-left text-xs text-slate-500">Медианы первых суток. Сигналы и кандидаты — отдельно за первые 7 суток; у свежих постов окно ещё не завершено.</caption>
+        <thead><tr className="text-xs uppercase text-slate-400"><th className="py-2 pr-3">Вариант</th><th className="py-2 pr-3">Постов</th><th className="py-2 pr-3">Просмотры</th><th className="py-2 pr-3">Ответов / 1000 просмотров</th><th className="py-2 pr-3">Сигналов</th><th className="py-2">Кандидатов</th></tr></thead>
+        <tbody>{data.growth_learning.groups.map(row => <tr key={`${row.language}-${row.dimension}-${row.key}`} className="border-t border-slate-100"><td className="py-2 pr-3">{row.language.toUpperCase()} · {row.dimension === "format" ? labelFor(row.label) : row.label}</td><td className="py-2 pr-3">{row.posts}</td><td className="py-2 pr-3">{row.median_views}</td><td className="py-2 pr-3">{row.median_reply_rate ?? "—"}</td><td className="py-2 pr-3">{row.signals}</td><td className="py-2">{row.candidates}</td></tr>)}</tbody>
+      </table></div>}
+      <p className="mt-3 text-xs text-slate-500">Наблюдаемые связи помогают выбирать тесты. Они не раскрывают алгоритм Threads и не гарантируют охват. Ответы не равны заявкам.</p>
+    </section>}
+
     <section className="panel mt-5 p-5">
       <div className="flex items-center gap-2"><Users className="h-5 w-5 text-clay-600" aria-hidden /><h2 className="font-bold">Аудитория: что спрашивают и на чём мы не ответили</h2></div>
       {!audience.data ? <p className="mt-4 text-sm text-slate-500">Профиль аудитории собирается из ответов и упоминаний в вашем аккаунте.</p> : <>

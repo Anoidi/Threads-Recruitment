@@ -204,5 +204,12 @@ export interface AnalyticsPoint { date: string; impressions: number; replies: nu
 export interface AnalyticsCoverage { published_posts: number; posts_with_metrics: number; posts_metrics_unavailable?: number; public_threads: "available" | "unavailable" | "no_recent_data"; public_topics: number; public_threads_detail?: string; }
 export interface TrendSignal { id: string; title: string; source: string; score: number; explanation?: string; url?: string; discovered_at: string; }
 export interface EditorialAnalysis { comparable_posts: number; insufficient_data: boolean; cohorts: { content_type: string; language: string; age_bucket: string; posts: number; engagement_rate: number; evidence: string }[]; limitations: string[]; }
-export interface Analytics { range: string; sample_size: number; performance: AnalyticsPoint[]; by_content_type: { name: string; posts: number; engagement: number }[]; top_posts: { id: string; content: string; impressions: number; replies: number; signals: number }[]; recommendation: string; coverage: AnalyticsCoverage; trends: TrendSignal[]; editorial_analysis?: EditorialAnalysis; }
+export interface GrowthLearning {
+  measurement_window: string; window_days: number;
+  coverage: { published: number; comparable: number; pending: number; missing_window: number; unavailable: number; zero_views: number };
+  recommendation: string; limitations: string[];
+  groups: { language: string; dimension: string; key: string; label: string; posts: number; rate_sample: number; median_views: number; median_reply_rate: number | null; signals: number; candidates: number }[];
+  next_tests: { language: string; dimension: string; status: string; preferred: string | null; comparison: string | null; reason: string }[];
+}
+export interface Analytics { range: string; sample_size: number; performance: AnalyticsPoint[]; by_content_type: { name: string; posts: number; engagement: number }[]; top_posts: { id: string; content: string; impressions: number; replies: number; signals: number }[]; recommendation: string; coverage: AnalyticsCoverage; trends: TrendSignal[]; editorial_analysis?: EditorialAnalysis; growth_learning?: GrowthLearning; }
 export interface ListResult<T> { items: T[]; total: number; }

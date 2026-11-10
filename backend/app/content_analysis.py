@@ -165,6 +165,8 @@ async def editorial_evidence(db):
     # is the part that lets the planner prefer a theme that resonates over one
     # that only repeats itself.
     report['content_evidence'] = await content_evidence(db)
+    from .growth_learning import growth_report
+    report['growth_learning'] = await growth_report(db)
     # Which active vacancies attract nobody. This is the most actionable
     # signal in the system: it names the exact job to talk about next.
     report['vacancy_demand'] = await vacancy_demand(db)

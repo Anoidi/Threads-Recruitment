@@ -153,6 +153,8 @@ async def _analyst_summary(db) -> str:
     from app.content_analysis import editorial_evidence
 
     report = await editorial_evidence(db)
+    from app.growth_learning import growth_brief
+    learning_line = growth_brief(report.get("growth_learning"))
     if not report["posts_with_metrics"]:
         return (
             "Нет публикаций с метриками. Следующий шаг: соберите замеры опубликованных постов "
@@ -181,6 +183,7 @@ async def _analyst_summary(db) -> str:
         + " ".join(report["limitations"])
         + audience_line
         + experiment_line
+        + " " + learning_line
     )
 
 

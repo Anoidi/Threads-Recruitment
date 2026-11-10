@@ -169,7 +169,10 @@ async def analytics(db: Db):
         for post_id in set(signal_totals) | set(candidate_totals)
     }
     evidence = analyze_content(posts, aggregates["snapshots_for_analysis"], attributed)
+    from ..growth_learning import growth_report
+    learning = await growth_report(db)
     return {
+        "growth_learning": learning,
         "editorial_analysis": evidence,
         "range": "все сохранённые данные",
         "sample_size": len(posts),

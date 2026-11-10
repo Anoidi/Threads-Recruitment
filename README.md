@@ -4,6 +4,8 @@
 
 ## Подробные инструкции
 
+- [Как программа использует просмотры и ответы для следующего плана](docs/growth-learning.md)
+
 - [Полная настройка с нуля](docs/SETUP_RU.md)
 - [AI: облако, Ollama и свой шлюз](docs/AI_RU.md)
 - [Threads: Meta, разрешения, OAuth и токены](docs/THREADS_RU.md)

@@ -118,7 +118,7 @@ PLANNER_MAX_TOKENS = 700
 COMMENT_ANALYSIS_TIMEOUT_SECONDS = 45.0
 
 
-def _compact_evidence(evidence: dict[str, Any] | None) -> dict[str, Any]:
+def _compact_evidence(evidence: dict[str, Any] | None, *, language: str | None = None) -> dict[str, Any]:
     """Keep only the parts of the editorial evidence that guide a new draft.
 
     The full report carries cohorts, limitations and repeated preferences.
@@ -130,6 +130,7 @@ def _compact_evidence(evidence: dict[str, Any] | None) -> dict[str, Any]:
     from .audience_profile import audience_brief
     from .content_evidence import evidence_brief
     from .experiments import experiment_brief
+    from .growth_learning import growth_brief
     from .recruitment_intelligence import demand_brief
 
     profile = evidence.get("audience_profile")
@@ -149,6 +150,7 @@ def _compact_evidence(evidence: dict[str, Any] | None) -> dict[str, Any]:
             for item in ((profile or {}).get("gaps") or [])[:3]
         ] if isinstance(profile, dict) else [],
         "what_worked": evidence_brief(evidence.get("content_evidence")),
+        "next_performance_test": growth_brief(evidence.get("growth_learning"), language=language),
         "demand_deficit": demand_brief(evidence.get("vacancy_demand")),
         "experiment": experiment_brief(evidence.get("experiment")),
     }
@@ -663,7 +665,7 @@ class AIService:
         from .content_subjects import primary_subject
 
         fact_lines, id_map, excluded_ids = planner_vacancy_context(vacancies, account_contact=getattr(self, "account_contact", None))
-        evidence = _compact_evidence(editorial_analysis)
+        evidence = _compact_evidence(editorial_analysis, language=language)
         published = [
             str(item.get("content") or "")[:120] for item in already[:4]
         ] + [str(opening)[:120] for opening in evidence.get("recent_openings", [])]
@@ -703,6 +705,13 @@ class AIService:
                 "documents, salary/housing questions) must dominate; at most one vacancy post. "
             )
             + "Use ONLY the vacancy facts below — never invent pay, conditions or locations. "
+            "For ordinary batches, use next_performance_test as the priority over lifetime-view rankings. "
+            "When it offers a supported test, include its preferred format or opening and retain an alternative, "
+            "keeping the topic and language comparable. Change one presentation factor at a time. "
+            "If samples are insufficient, explore two different presentations rather than claiming a winner. "
+            "Do not override a controlled format experiment with these suggestions. "
+            "Explain the chosen test in rationale. Optimize useful conversation and confirmed recruitment outcomes, "
+            "not provocation, fake personal stories, repetitive questions, invented urgency or requests for likes. "
             "Never state the opposite of a stored fact (for example, do not say housing is "
             "not provided when a vacancy lists housing) and say nothing about fields that "
             "are absent. "
